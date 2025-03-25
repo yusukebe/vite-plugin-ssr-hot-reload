@@ -2,13 +2,8 @@ import { describe, it, expect, vi } from 'vitest'
 import { createServer, type ViteDevServer } from 'vite'
 import request from 'supertest'
 import path from 'node:path'
+import fs from 'node:fs'
 import ssrHotReload from './plugin'
-
-vi.mock('fast-glob', () => {
-  return {
-    default: vi.fn(() => Promise.resolve([path.resolve('src/pages/index.tsx')]))
-  }
-})
 
 describe('ssrHotReload plugin', () => {
   it('injects @vite/client into HTML', async () => {
@@ -36,23 +31,27 @@ describe('ssrHotReload plugin', () => {
     await viteServer.close()
   })
 
-  it('sends full-reload on SSR module change', async () => {
+  it('sends full-reload on SSR module change (matched)', async () => {
     const server = {
       hot: {
         send: vi.fn()
       }
     } as any
 
-    const filePath = path.resolve('src/pages/index.tsx')
+    const testFile = path.resolve('src/pages/index.tsx')
+
+    fs.mkdirSync(path.dirname(testFile), { recursive: true })
+    fs.writeFileSync(testFile, '// mock file')
+
     const plugin = ssrHotReload({
-      entry: ['src/pages/**/*.tsx']
+      entry: [testFile]
     })
 
     // @ts-ignore
     const result = plugin.handleHotUpdate?.({
-      file: filePath,
+      file: testFile,
       server,
-      modules: [{ file: filePath }],
+      modules: [{ file: testFile }],
       timestamp: Date.now(),
       read: () => Promise.resolve('')
     })
@@ -64,23 +63,23 @@ describe('ssrHotReload plugin', () => {
     expect(server.hot.send).toHaveBeenCalledWith({ type: 'full-reload' })
   })
 
-  it('does not reload if file does not match entry', async () => {
+  it('does not reload when file does not match entry', async () => {
     const server = {
       hot: {
         send: vi.fn()
       }
     } as any
 
-    const unrelatedFile = path.resolve('src/components/Button.tsx')
+    const changedFile = path.resolve('src/other/File.ts')
     const plugin = ssrHotReload({
       entry: ['src/pages/**/*.tsx']
     })
 
     // @ts-ignore
     const result = plugin.handleHotUpdate?.({
-      file: unrelatedFile,
+      file: changedFile,
       server,
-      modules: [{ file: unrelatedFile }],
+      modules: [{ file: changedFile }],
       timestamp: Date.now(),
       read: () => Promise.resolve('')
     })
