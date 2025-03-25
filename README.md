@@ -20,6 +20,22 @@ export default defineConfig({
 })
 ```
 
+## Options
+
+You can pass `entry` to specify which files should trigger a full reload.
+
+```ts
+ssrHotReload({
+  entry: ['/src/pages/**/*.tsx', '/src/layouts/**/*.ts']
+})
+```
+
+By default, the plugin watches:
+
+```ts
+entry: ['/src/**/*.ts', '/src/**/*.tsx']
+```
+
 ## What it does
 
 - Injects `<script type="module" src="/@vite/client">` into HTML responses (only in dev)
