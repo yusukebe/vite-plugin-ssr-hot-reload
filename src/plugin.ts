@@ -49,9 +49,10 @@ export default function ssrHotReload(options: Options = {}): Plugin {
       })
     },
 
-    async handleHotUpdate({ server, modules }) {
-      const changedFiles = modules.map((m) => m.file).filter(Boolean) as string[]
-      if (changedFiles.length === 0) return
+    async handleHotUpdate({ server, file }) {
+      if (!file) return
+
+      const changedFiles = [file]
 
       const matched = await glob(entryPatterns, { cwd: root, absolute: true })
       const matchedSet = new Set(matched.map((f) => path.resolve(f)))
