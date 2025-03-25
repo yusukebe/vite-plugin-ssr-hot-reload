@@ -7,7 +7,7 @@
     "build": "tsup",
     "watch": "tsup --watch",
     "publint": "publint",
-    "prerelease": "bun run build && bun run test",
+    "prerelease": "bun run build && bun vitest --run",
     "release": "bun run np"
   },
   "files": [
