@@ -1,0 +1,48 @@
+{
+  "name": "vite-plugin-ssr-hot-reload",
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest",
+    "build": "tsup",
+    "watch": "tsup --watch",
+    "publint": "publint",
+    "prerelease": "bun run build && bun run test",
+    "release": "bun run np"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "author": "Yusuke Wada <yusuke@kamawada.com> (https://github.com/yusukebe)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yusukebe/vite-plugin-ssr-hot-reload.git"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "devDependencies": {
+    "@hono/eslint-config": "^1.0.2",
+    "@types/node": "^22.13.13",
+    "@types/supertest": "^6.0.3",
+    "eslint": "^9.23.0",
+    "hono": "^4.7.5",
+    "np": "^10.2.0",
+    "publint": "^0.3.9",
+    "supertest": "^7.1.0",
+    "tsup": "^8.4.0",
+    "vite": "^6.2.3",
+    "vitest": "^3.0.9"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
