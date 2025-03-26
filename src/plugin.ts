@@ -1,4 +1,4 @@
-import { Plugin } from 'vite'
+import { Plugin, normalizePath } from 'vite'
 import { glob } from 'glob'
 import path from 'node:path'
 import type { ServerResponse } from 'node:http'
@@ -9,17 +9,39 @@ type Options = {
 }
 
 export default function ssrHotReload(options: Options = {}): Plugin {
-  const entryPatterns = Array.isArray(options.entry) ? options.entry : [options.entry ?? 'src/**/*.ts', 'src/**/*.tsx']
+  const entryPatterns = Array.isArray(options.entry)
+    ? options.entry
+    : options.entry
+    ? [options.entry]
+    : ['src/**/*.ts', 'src/**/*.tsx']
   const ignorePatterns = Array.isArray(options.ignore) ? options.ignore : options.ignore ? [options.ignore] : []
 
   const root = process.cwd()
 
   const normalizedIgnorePatterns = ignorePatterns.map((pattern) => {
-    if (path.isAbsolute(pattern)) {
-      const relativePath = path.relative(root, pattern)
-      return relativePath.startsWith('..') ? pattern : relativePath
+    // Normalize the pattern to use forward slashes
+    const normalizedPattern = normalizePath(pattern)
+
+    // Handle absolute file system paths
+    if (path.isAbsolute(normalizedPattern)) {
+      const relativePath = path.relative(root, normalizedPattern)
+      return relativePath.startsWith('..') ? normalizedPattern : relativePath
     }
-    return pattern
+
+    // Handle paths that start with a slash (relative to project root)
+    if (normalizedPattern.startsWith('/')) {
+      // Remove the leading slash to make it relative to the root
+      return normalizedPattern.slice(1)
+    }
+
+    // Handle paths that start with './'
+    if (normalizedPattern.startsWith('./')) {
+      // Remove the './' prefix
+      return normalizedPattern.slice(2)
+    }
+
+    // Return other patterns as is
+    return normalizedPattern
   })
 
   return {
@@ -33,10 +55,10 @@ export default function ssrHotReload(options: Options = {}): Plugin {
         const originalWrite = res.write.bind(res)
         const originalEnd = res.end.bind(res)
 
-        res.write = ((chunk: any, ..._args: any[]) => {
+        res.write = (chunk: any, ...args: any[]) => {
           if (chunk) buffer += chunk.toString()
-          return true
-        }) as typeof res.write
+          return originalWrite(chunk, ...args)
+        }
 
         res.end = ((chunk: any, ..._args: any[]) => {
           if (chunk) buffer += chunk.toString()
@@ -51,8 +73,7 @@ export default function ssrHotReload(options: Options = {}): Plugin {
             res.setHeader('content-length', Buffer.byteLength(buffer))
           }
 
-          originalWrite(buffer)
-          originalEnd()
+          originalEnd(buffer)
         }) as typeof res.end
 
         next()
