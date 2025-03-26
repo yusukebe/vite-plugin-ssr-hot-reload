@@ -63,7 +63,7 @@ describe('ssrHotReload plugin', () => {
     expect(server.hot.send).toHaveBeenCalledWith({ type: 'full-reload' })
   })
 
-  it('does not reload when file does not match entry', async () => {
+  it('does not reload when file does not match entry patterns', async () => {
     const server = {
       hot: {
         send: vi.fn()
@@ -73,6 +73,36 @@ describe('ssrHotReload plugin', () => {
     const changedFile = path.resolve('src/other/File.ts')
     const plugin = ssrHotReload({
       entry: ['src/pages/**/*.tsx']
+    })
+
+    // @ts-ignore
+    const result = plugin.handleHotUpdate?.({
+      file: changedFile,
+      server,
+      modules: [{ file: changedFile }],
+      timestamp: Date.now(),
+      read: () => Promise.resolve('')
+    })
+
+    if (result instanceof Promise) {
+      await result
+    }
+
+    expect(server.hot.send).not.toHaveBeenCalled()
+  })
+
+  it('does not reload when file matches ignore patterns', async () => {
+    const server = {
+      hot: {
+        send: vi.fn()
+      }
+    } as any
+
+    // Create a file that would match entry but also matches ignore
+    const changedFile = path.resolve('src/pages/ignored.tsx')
+    const plugin = ssrHotReload({
+      entry: ['src/pages/**/*.tsx'],
+      ignore: ['src/pages/ignored.tsx']
     })
 
     // @ts-ignore

@@ -5,10 +5,12 @@ import type { ServerResponse } from 'node:http'
 
 type Options = {
   entry?: string | string[]
+  ignore?: string | string[]
 }
 
 export default function ssrHotReload(options: Options = {}): Plugin {
   const entryPatterns = Array.isArray(options.entry) ? options.entry : [options.entry ?? 'src/**/*.ts', 'src/**/*.tsx']
+  const ignorePatterns = Array.isArray(options.ignore) ? options.ignore : options.ignore ? [options.ignore] : []
 
   const root = process.cwd()
 
@@ -53,8 +55,11 @@ export default function ssrHotReload(options: Options = {}): Plugin {
       if (!file) return
 
       const changedFiles = [file]
-
-      const matched = await glob(entryPatterns, { cwd: root, absolute: true })
+      const matched = await glob(entryPatterns, {
+        cwd: root,
+        absolute: true,
+        ignore: ignorePatterns
+      })
       const matchedSet = new Set(matched.map((f) => path.resolve(f)))
 
       const shouldReload = changedFiles.some((file) => matchedSet.has(path.resolve(file)))
