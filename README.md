@@ -22,6 +22,8 @@ export default defineConfig({
 
 ## Options
 
+### entry
+
 You can pass `entry` to specify which files should trigger a full reload.
 
 ```ts
@@ -34,6 +36,17 @@ By default, the plugin watches:
 
 ```ts
 entry: ['/src/**/*.ts', '/src/**/*.tsx']
+```
+
+### ignore
+
+You can pass `ignore` to specify which files should be excluded from triggering a full reload, even if they match the entry patterns.
+
+```ts
+ssrHotReload({
+  entry: ['/src/pages/**/*.tsx'],
+  ignore: ['/src/pages/ignored/**/*.tsx']
+})
 ```
 
 ## What it does
