@@ -329,4 +329,97 @@ describe('ssrHotReload plugin', () => {
 
     expect(server.hot.send).not.toHaveBeenCalled()
   })
+
+  it('reloads when file matches entry pattern with leading slash', async () => {
+    const server = {
+      hot: {
+        send: vi.fn()
+      }
+    } as any
+
+    // Define a file that would match an entry pattern with leading slash
+    const filePath = path.resolve('src/pages/slash-path.tsx')
+
+    // Use a path with leading slash for entry
+    const plugin = ssrHotReload({
+      entry: ['/src/pages/slash-path.tsx'] // Path with leading slash
+    })
+
+    // @ts-ignore
+    const result = plugin.handleHotUpdate?.({
+      file: filePath,
+      server,
+      modules: [{ file: filePath }],
+      timestamp: Date.now(),
+      read: () => Promise.resolve('')
+    })
+
+    if (result instanceof Promise) {
+      await result
+    }
+
+    expect(server.hot.send).toHaveBeenCalledWith({ type: 'full-reload' })
+  })
+
+  it('reloads when file matches entry pattern with dot-slash prefix', async () => {
+    const server = {
+      hot: {
+        send: vi.fn()
+      }
+    } as any
+
+    // Define a file that would match an entry pattern with dot-slash prefix
+    const filePath = path.resolve('src/pages/dot-slash-path.tsx')
+
+    // Use a path with dot-slash prefix for entry
+    const plugin = ssrHotReload({
+      entry: ['./src/pages/dot-slash-path.tsx'] // Path with dot-slash prefix
+    })
+
+    // @ts-ignore
+    const result = plugin.handleHotUpdate?.({
+      file: filePath,
+      server,
+      modules: [{ file: filePath }],
+      timestamp: Date.now(),
+      read: () => Promise.resolve('')
+    })
+
+    if (result instanceof Promise) {
+      await result
+    }
+
+    expect(server.hot.send).toHaveBeenCalledWith({ type: 'full-reload' })
+  })
+
+  it('reloads when file matches absolute path entry pattern', async () => {
+    const server = {
+      hot: {
+        send: vi.fn()
+      }
+    } as any
+
+    // Define a file with absolute path
+    const absoluteFilePath = path.resolve('src/pages/test-absolute-file.tsx')
+
+    // Use the absolute path for entry
+    const plugin = ssrHotReload({
+      entry: [absoluteFilePath] // Absolute file path
+    })
+
+    // @ts-ignore
+    const result = plugin.handleHotUpdate?.({
+      file: absoluteFilePath,
+      server,
+      modules: [{ file: absoluteFilePath }],
+      timestamp: Date.now(),
+      read: () => Promise.resolve('')
+    })
+
+    if (result instanceof Promise) {
+      await result
+    }
+
+    expect(server.hot.send).toHaveBeenCalledWith({ type: 'full-reload' })
+  })
 })
