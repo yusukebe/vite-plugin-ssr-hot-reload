@@ -18,7 +18,7 @@ export default function ssrHotReload(options: Options = {}): Plugin {
 
   const root = process.cwd()
 
-  const normalizedIgnorePatterns = ignorePatterns.map((pattern) => {
+  const normalizePattern = (pattern: string) => {
     // Normalize the pattern to use forward slashes
     const normalizedPattern = normalizePath(pattern)
 
@@ -42,7 +42,10 @@ export default function ssrHotReload(options: Options = {}): Plugin {
 
     // Return other patterns as is
     return normalizedPattern
-  })
+  }
+
+  const normalizedEntryPatterns = entryPatterns.map(normalizePattern)
+  const normalizedIgnorePatterns = ignorePatterns.map(normalizePattern)
 
   return {
     name: 'vite-plugin-ssr-hot-reload',
@@ -84,7 +87,7 @@ export default function ssrHotReload(options: Options = {}): Plugin {
       if (!file) return
 
       const changedFiles = [file]
-      const matched = await glob(entryPatterns, {
+      const matched = await glob(normalizedEntryPatterns, {
         cwd: root,
         absolute: true,
         ignore: normalizedIgnorePatterns
