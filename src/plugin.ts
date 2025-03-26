@@ -14,6 +14,14 @@ export default function ssrHotReload(options: Options = {}): Plugin {
 
   const root = process.cwd()
 
+  const normalizedIgnorePatterns = ignorePatterns.map((pattern) => {
+    if (path.isAbsolute(pattern)) {
+      const relativePath = path.relative(root, pattern)
+      return relativePath.startsWith('..') ? pattern : relativePath
+    }
+    return pattern
+  })
+
   return {
     name: 'vite-plugin-ssr-hot-reload',
     apply: 'serve',
@@ -58,7 +66,7 @@ export default function ssrHotReload(options: Options = {}): Plugin {
       const matched = await glob(entryPatterns, {
         cwd: root,
         absolute: true,
-        ignore: ignorePatterns
+        ignore: normalizedIgnorePatterns
       })
       const matchedSet = new Set(matched.map((f) => path.resolve(f)))
 
