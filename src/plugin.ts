@@ -52,32 +52,41 @@ export default function ssrHotReload(options: Options = {}): Plugin {
     apply: 'serve',
 
     configureServer(server) {
+      // Use a much simpler approach to inject the client script
       server.middlewares.use((_req, res: ServerResponse, next) => {
-        let buffer = ''
-
-        const originalWrite = res.write.bind(res)
         const originalEnd = res.end.bind(res)
 
-        res.write = (chunk: any, ...args: any[]) => {
-          if (chunk) buffer += chunk.toString()
-          return originalWrite(chunk, ...args)
-        }
-
-        res.end = ((chunk: any, ..._args: any[]) => {
-          if (chunk) buffer += chunk.toString()
-
+        // Override the end method
+        res.end = function (chunk: any, ...args: any[]) {
+          // Only process if this is an HTML response
           const contentType = res.getHeader('content-type')
-          const isHTML = typeof contentType === 'string' && contentType.includes('text/html')
-          const alreadyInjected = buffer.includes('/@vite/client')
-          const script = `<script type="module" src="/@vite/client"></script>`
+          if (typeof contentType === 'string' && contentType.includes('text/html')) {
+            // Convert chunk to string if it exists
+            let html = chunk ? chunk.toString() : ''
 
-          if (isHTML && !alreadyInjected) {
-            buffer += `\n${script}`
-            res.setHeader('content-length', Buffer.byteLength(buffer))
+            // Only inject if not already present
+            if (!html.includes('/@vite/client')) {
+              const script = `<script type="module" src="/@vite/client"></script>`
+
+              // Try to inject before </body> if it exists
+              if (html.includes('</body>')) {
+                html = html.replace('</body>', `${script}\n</body>`)
+              } else {
+                // Otherwise append to the end
+                html += `\n${script}`
+              }
+
+              // Convert back to Buffer if needed
+              const newChunk = Buffer.isBuffer(chunk) ? Buffer.from(html) : html
+
+              // Call the original end with the modified chunk
+              return originalEnd(newChunk, ...args)
+            }
           }
 
-          originalEnd(buffer)
-        }) as typeof res.end
+          // Call the original end for non-HTML responses or if already injected
+          return originalEnd(chunk, ...args)
+        } as any
 
         next()
       })
