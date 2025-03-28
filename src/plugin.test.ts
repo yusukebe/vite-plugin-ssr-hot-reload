@@ -154,4 +154,29 @@ describe('ssrHotReload plugin', () => {
     await callHandleHotUpdate(plugin, file, server)
     expect(server.hot.send).not.toHaveBeenCalled()
   })
+
+  it('sets correct Content-Length after injection', async () => {
+    const viteServer: ViteDevServer = await createServer({
+      root: process.cwd(),
+      server: { middlewareMode: true },
+      plugins: [
+        ssrHotReload({ injectReactRefresh: true }),
+        {
+          name: 'html-mock',
+          configureServer(server) {
+            server.middlewares.use((_req, res) => {
+              res.setHeader('content-type', 'text/html')
+              res.end('<html><head></head><body><h1>Hello</h1></body></html>')
+            })
+          }
+        }
+      ]
+    })
+    const res = await request(viteServer.middlewares).get('/')
+    const contentLength = Number(res.header['content-length'])
+    expect(res.status).toBe(200)
+    expect(contentLength).toBeGreaterThan(0)
+    expect(res.text.length).toBe(contentLength)
+    await viteServer.close()
+  })
 })

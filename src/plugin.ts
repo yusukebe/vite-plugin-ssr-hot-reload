@@ -47,35 +47,67 @@ export default function ssrHotReload(options: Options = {}): Plugin {
     configureServer(server) {
       server.middlewares.use((_req, res: ServerResponse, next) => {
         const originalEnd = res.end.bind(res)
+        const chunks: Buffer[] = []
+
+        res.write = function (chunk: any, ..._args: any[]) {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+          return true
+        }
 
         res.end = function (chunk: any, ...args: any[]) {
-          const contentType = res.getHeader('content-type')
-          if (typeof contentType === 'string' && contentType.includes('text/html')) {
-            let html = chunk ? chunk.toString() : ''
+          if (chunk) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+          }
 
-            // Inject React Refresh scripts into head if enabled
-            if (injectReactRefresh && html.includes('</head>') && !html.includes('/@react-refresh')) {
-              const reactRefreshScript = `<script type="module" src="/@react-refresh"></script>
+          const contentType = res.getHeader('content-type')
+          const isHtml = typeof contentType === 'string' && contentType.includes('text/html')
+
+          if (!isHtml) {
+            return originalEnd(Buffer.concat(chunks), ...args)
+          }
+
+          const html = Buffer.concat(chunks).toString()
+          let finalHtml = html
+
+          const hasRefresh = html.includes('/@react-refresh')
+          const hasViteClient = html.includes('/@vite/client')
+
+          let injection = ''
+
+          if (injectReactRefresh && !hasRefresh) {
+            injection += `<script type="module" src="/@react-refresh"></script>
 <script type="module">
   import RefreshRuntime from '/@react-refresh'
   RefreshRuntime.injectIntoGlobalHook(window)
   window.$RefreshReg$ = () => {}
   window.$RefreshSig$ = () => (type) => type
   window.__vite_plugin_react_preamble_installed__ = true
-</script>`
-              html = html.replace('</head>', `${reactRefreshScript}\n</head>`)
-            }
+</script>\n`
+          }
 
-            // Inject Vite client script if not already present
-            if (!html.includes('/@vite/client')) {
-              const script = `<script type="module" src="/@vite/client"></script>`
-              html = html.includes('</body>') ? html.replace('</body>', `${script}\n</body>`) : html + `\n${script}`
-              const newChunk = Buffer.isBuffer(chunk) ? Buffer.from(html) : html
-              return originalEnd(newChunk, ...args)
+          if (!hasViteClient) {
+            injection += `<script type="module" src="/@vite/client"></script>\n`
+          }
+
+          if (injection) {
+            if (html.includes('<head>')) {
+              finalHtml = finalHtml.replace('<head>', `<head>\n${injection}`)
+            } else if (html.includes('<html>')) {
+              finalHtml = finalHtml.replace('<html>', `<html>\n${injection}`)
+            } else {
+              finalHtml = `${injection}${finalHtml}`
             }
           }
-          return originalEnd(chunk, ...args)
-        } as any
+
+          const encoder = new TextEncoder()
+          const encoded = encoder.encode(finalHtml)
+
+          if (!res.headersSent) {
+            res.setHeader('Content-Length', encoded.length)
+          }
+
+          return originalEnd(Buffer.from(encoded), ...args)
+        }
 
         next()
       })
