@@ -6,6 +6,7 @@ import type { ServerResponse } from 'node:http'
 type Options = {
   entry?: string | string[]
   ignore?: string | string[]
+  injectReactRefresh?: boolean
 }
 
 export default function ssrHotReload(options: Options = {}): Plugin {
@@ -16,6 +17,8 @@ export default function ssrHotReload(options: Options = {}): Plugin {
     : ['src/**/*.ts', 'src/**/*.tsx']
 
   const ignorePatterns = Array.isArray(options.ignore) ? options.ignore : options.ignore ? [options.ignore] : []
+
+  const injectReactRefresh = options.injectReactRefresh ?? false
 
   let root = process.cwd()
   let isMatch: (file: string) => boolean
@@ -49,6 +52,21 @@ export default function ssrHotReload(options: Options = {}): Plugin {
           const contentType = res.getHeader('content-type')
           if (typeof contentType === 'string' && contentType.includes('text/html')) {
             let html = chunk ? chunk.toString() : ''
+
+            // Inject React Refresh scripts into head if enabled
+            if (injectReactRefresh && html.includes('<head>') && !html.includes('/@react-refresh')) {
+              const reactRefreshScript = `<script type="module" src="/@react-refresh"></script>
+<script type="module">
+  import RefreshRuntime from '/@react-refresh'
+  RefreshRuntime.injectIntoGlobalHook(window)
+  window.$RefreshReg$ = () => {}
+  window.$RefreshSig$ = () => (type) => type
+  window.__vite_plugin_react_preamble_installed__ = true
+</script>`
+              html = html.replace('<head>', `<head>\n${reactRefreshScript}`)
+            }
+
+            // Inject Vite client script if not already present
             if (!html.includes('/@vite/client')) {
               const script = `<script type="module" src="/@vite/client"></script>`
               html = html.includes('</body>') ? html.replace('</body>', `${script}\n</body>`) : html + `\n${script}`

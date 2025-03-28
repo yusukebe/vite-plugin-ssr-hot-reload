@@ -46,6 +46,56 @@ describe('ssrHotReload plugin', () => {
     await viteServer.close()
   })
 
+  it('injects React Refresh scripts into HTML head when injectReactRefresh is true', async () => {
+    const viteServer: ViteDevServer = await createServer({
+      root: process.cwd(),
+      server: { middlewareMode: true },
+      plugins: [
+        ssrHotReload({ injectReactRefresh: true }),
+        {
+          name: 'html-mock',
+          configureServer(server) {
+            server.middlewares.use((_req, res) => {
+              res.setHeader('content-type', 'text/html')
+              res.end('<html><head></head><body><h1>Hello</h1></body></html>')
+            })
+          }
+        }
+      ]
+    })
+
+    const res = await request(viteServer.middlewares).get('/')
+    expect(res.status).toBe(200)
+    expect(res.text).toContain('<script type="module" src="/@react-refresh"></script>')
+    expect(res.text).toContain("import RefreshRuntime from '/@react-refresh'")
+    expect(res.text).toContain('window.__vite_plugin_react_preamble_installed__ = true')
+    await viteServer.close()
+  })
+
+  it('does not inject React Refresh scripts when injectReactRefresh is false', async () => {
+    const viteServer: ViteDevServer = await createServer({
+      root: process.cwd(),
+      server: { middlewareMode: true },
+      plugins: [
+        ssrHotReload({ injectReactRefresh: false }),
+        {
+          name: 'html-mock',
+          configureServer(server) {
+            server.middlewares.use((_req, res) => {
+              res.setHeader('content-type', 'text/html')
+              res.end('<html><head></head><body><h1>Hello</h1></body></html>')
+            })
+          }
+        }
+      ]
+    })
+
+    const res = await request(viteServer.middlewares).get('/')
+    expect(res.status).toBe(200)
+    expect(res.text).not.toContain('<script type="module" src="/@react-refresh"></script>')
+    await viteServer.close()
+  })
+
   it('sends full-reload on SSR module change (matched)', async () => {
     const server = { hot: { send: vi.fn() } }
     const file = path.resolve('src/pages/index.tsx')
