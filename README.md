@@ -49,9 +49,48 @@ ssrHotReload({
 })
 ```
 
+### injectReactRefresh
+
+You can pass `injectReactRefresh: true` to inject React Refresh scripts into the HTML head. This is useful for React applications that need hot module replacement for React components.
+
+**Note:** To use this feature, you need to install `@vitejs/plugin-react` in your project.
+
+```ts
+// First, install @vitejs/plugin-react
+// npm install -D @vitejs/plugin-react
+
+// Then in your vite.config.ts
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import ssrHotReload from 'vite-plugin-ssr-hot-reload'
+
+export default defineConfig({
+  plugins: [
+    react(), // Make sure to include the React plugin
+    ssrHotReload({
+      injectReactRefresh: true
+    })
+  ]
+})
+```
+
+When enabled, the plugin injects the following scripts into the `<head>` tag:
+
+```html
+<script type="module" src="/@react-refresh"></script>
+<script type="module">
+  import RefreshRuntime from '/@react-refresh'
+  RefreshRuntime.injectIntoGlobalHook(window)
+  window.$RefreshReg$ = () => {}
+  window.$RefreshSig$ = () => (type) => type
+  window.__vite_plugin_react_preamble_installed__ = true
+</script>
+```
+
 ## What it does
 
 - Injects `<script type="module" src="/@vite/client">` into HTML responses (only in dev)
+- Optionally injects React Refresh scripts into the HTML head when `injectReactRefresh: true` is set
 - Sends a full-reload signal when an SSR module is updated
 
 ## Author
