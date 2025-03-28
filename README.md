@@ -74,7 +74,7 @@ export default defineConfig({
 })
 ```
 
-When enabled, the plugin injects the following scripts into the `<head>` tag:
+When enabled, the plugin injects the following scripts at the end of the `<head>` tag:
 
 ```html
 <script type="module" src="/@react-refresh"></script>

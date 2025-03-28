@@ -54,7 +54,7 @@ export default function ssrHotReload(options: Options = {}): Plugin {
             let html = chunk ? chunk.toString() : ''
 
             // Inject React Refresh scripts into head if enabled
-            if (injectReactRefresh && html.includes('<head>') && !html.includes('/@react-refresh')) {
+            if (injectReactRefresh && html.includes('</head>') && !html.includes('/@react-refresh')) {
               const reactRefreshScript = `<script type="module" src="/@react-refresh"></script>
 <script type="module">
   import RefreshRuntime from '/@react-refresh'
@@ -63,7 +63,7 @@ export default function ssrHotReload(options: Options = {}): Plugin {
   window.$RefreshSig$ = () => (type) => type
   window.__vite_plugin_react_preamble_installed__ = true
 </script>`
-              html = html.replace('<head>', `<head>\n${reactRefreshScript}`)
+              html = html.replace('</head>', `${reactRefreshScript}\n</head>`)
             }
 
             // Inject Vite client script if not already present
