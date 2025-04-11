@@ -102,9 +102,7 @@ export default function ssrHotReload(options: Options = {}): Plugin {
           const encoder = new TextEncoder()
           const encoded = encoder.encode(finalHtml)
 
-          if (!res.headersSent) {
-            res.setHeader('Content-Length', encoded.length)
-          }
+          res.setHeader('Content-Length', encoded.length)
 
           return originalEnd(Buffer.from(encoded), ...args)
         }
