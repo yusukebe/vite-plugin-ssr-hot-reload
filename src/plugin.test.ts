@@ -46,6 +46,136 @@ describe('ssrHotReload plugin', () => {
     await viteServer.close()
   })
 
+  it('does inject @vite/client into HTML when injectViteClient is true', async () => {
+    const viteServer: ViteDevServer = await createServer({
+      root: process.cwd(),
+      server: { middlewareMode: true },
+      plugins: [
+        ssrHotReload({
+          injectViteClient: true
+        }),
+        {
+          name: 'html-mock',
+          configureServer(server) {
+            server.middlewares.use((_req, res) => {
+              res.setHeader('content-type', 'text/html')
+              res.end('<html><body><h1>Hello</h1></body></html>')
+            })
+          }
+        }
+      ]
+    })
+
+    const res = await request(viteServer.middlewares).get('/')
+    expect(res.status).toBe(200)
+    expect(res.text.includes('<script type="module" src="/@vite/client"></script>')).toBe(true)
+    await viteServer.close()
+  })
+
+  it('does not inject @vite/client into HTML when injectViteClient is false', async () => {
+    const viteServer: ViteDevServer = await createServer({
+      root: process.cwd(),
+      server: { middlewareMode: true },
+      plugins: [
+        ssrHotReload({
+          injectViteClient: false,
+        }),
+        {
+          name: 'html-mock',
+          configureServer(server) {
+            server.middlewares.use((_req, res) => {
+              res.setHeader('content-type', 'text/html')
+              res.end('<html><body><h1>Hello</h1></body></html>')
+            })
+          }
+        }
+      ]
+    })
+
+    const res = await request(viteServer.middlewares).get('/')
+    expect(res.status).toBe(200)
+    expect(res.text.includes('<script type="module" src="/@vite/client"></script>')).toBe(false)
+    await viteServer.close()
+  })
+
+  it('does not inject @vite/client into HTML when injectViteClient is function returning false', async () => {
+    const viteServer: ViteDevServer = await createServer({
+      root: process.cwd(),
+      server: { middlewareMode: true },
+      plugins: [
+        ssrHotReload({
+          injectViteClient: (_req, _res) => false,
+        }),
+        {
+          name: 'html-mock',
+          configureServer(server) {
+            server.middlewares.use((_req, res) => {
+              res.setHeader('content-type', 'text/html')
+              res.end('<html><body><h1>Hello</h1></body></html>')
+            })
+          }
+        }
+      ]
+    })
+
+    const res = await request(viteServer.middlewares).get('/')
+    expect(res.status).toBe(200)
+    expect(res.text.includes('<script type="module" src="/@vite/client"></script>')).toBe(false)
+    await viteServer.close()
+  })
+
+  it('does inject @vite/client into HTML when injectViteClient is function returning true', async () => {
+    const viteServer: ViteDevServer = await createServer({
+      root: process.cwd(),
+      server: { middlewareMode: true },
+      plugins: [
+        ssrHotReload({
+          injectViteClient: (_req, _res) => true,
+        }),
+        {
+          name: 'html-mock',
+          configureServer(server) {
+            server.middlewares.use((_req, res) => {
+              res.setHeader('content-type', 'text/html')
+              res.end('<html><body><h1>Hello</h1></body></html>')
+            })
+          }
+        }
+      ]
+    })
+
+    const res = await request(viteServer.middlewares).get('/')
+    expect(res.status).toBe(200)
+    expect(res.text.includes('<script type="module" src="/@vite/client"></script>')).toBe(true)
+    await viteServer.close()
+  })
+
+  it('does not inject @vite/client into HTML when injectViteClient is function with HX-Request header', async () => {
+    const viteServer: ViteDevServer = await createServer({
+      root: process.cwd(),
+      server: { middlewareMode: true },
+      plugins: [
+        ssrHotReload({
+          injectViteClient: (req, _res) => !Boolean(req.headers['hx-request'])
+        }),
+        {
+          name: 'html-mock',
+          configureServer(server) {
+            server.middlewares.use((_req, res) => {
+              res.setHeader('content-type', 'text/html')
+              res.end('<html><body><h1>Hello</h1></body></html>')
+            })
+          }
+        }
+      ]
+    })
+
+    const res = await request(viteServer.middlewares).get('/').set('HX-Request', 'true')
+    expect(res.status).toBe(200)
+    expect(res.text.includes('<script type="module" src="/@vite/client"></script>')).toBe(false)
+    await viteServer.close()
+  })
+
   it('injects React Refresh scripts into HTML head when injectReactRefresh is true', async () => {
     const viteServer: ViteDevServer = await createServer({
       root: process.cwd(),

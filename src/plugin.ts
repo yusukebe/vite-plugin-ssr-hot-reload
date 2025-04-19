@@ -3,10 +3,33 @@ import path from 'node:path'
 import picomatch from 'picomatch'
 import type { ServerResponse } from 'node:http'
 
+
+type ShouldInjectFunction = (req: ServerResponse['req'], res: ServerResponse) => boolean
+
 type Options = {
+  /**
+   * default ['src\/\*\*\/\*.ts', 'src\/\*\*\/\*.tsx']
+   */
   entry?: string | string[]
-  ignore?: string | string[]
-  injectReactRefresh?: boolean
+
+  ignore?: string | string[],
+  /**
+   * default: true
+   */
+  injectViteClient?: boolean | ShouldInjectFunction
+  /**
+   * default: false
+   */
+  injectReactRefresh?: boolean | ShouldInjectFunction
+}
+
+function intoShouldInjectFunction(value: boolean | ShouldInjectFunction | undefined, defaultValue: boolean): ShouldInjectFunction {
+  switch (typeof value) {
+    case 'boolean': return (_req, _res) => value;
+    case 'function': return value;
+    default:
+      return (_req, _res) => defaultValue
+  }
 }
 
 export default function ssrHotReload(options: Options = {}): Plugin {
@@ -18,7 +41,8 @@ export default function ssrHotReload(options: Options = {}): Plugin {
 
   const ignorePatterns = Array.isArray(options.ignore) ? options.ignore : options.ignore ? [options.ignore] : []
 
-  const injectReactRefresh = options.injectReactRefresh ?? false
+  const injectReactRefresh = intoShouldInjectFunction(options.injectReactRefresh, false)
+  const injectViteClientFn = intoShouldInjectFunction(options.injectViteClient, true)
 
   let root = process.cwd()
   let isMatch: (file: string) => boolean
@@ -45,7 +69,7 @@ export default function ssrHotReload(options: Options = {}): Plugin {
     },
 
     configureServer(server) {
-      server.middlewares.use((_req, res: ServerResponse, next) => {
+      server.middlewares.use((req, res: ServerResponse, next) => {
         const originalEnd = res.end.bind(res)
         const chunks: Buffer[] = []
 
@@ -61,7 +85,6 @@ export default function ssrHotReload(options: Options = {}): Plugin {
 
           const contentType = res.getHeader('content-type')
           const isHtml = typeof contentType === 'string' && contentType.includes('text/html')
-
           if (!isHtml) {
             return originalEnd(Buffer.concat(chunks), ...args)
           }
@@ -74,7 +97,7 @@ export default function ssrHotReload(options: Options = {}): Plugin {
 
           let injection = ''
 
-          if (injectReactRefresh && !hasRefresh) {
+          if (injectReactRefresh(req, res) && !hasRefresh) {
             injection += `<script type="module" src="/@react-refresh"></script>
 <script type="module">
   import RefreshRuntime from '/@react-refresh'
@@ -85,7 +108,7 @@ export default function ssrHotReload(options: Options = {}): Plugin {
 </script>\n`
           }
 
-          if (!hasViteClient) {
+          if (injectViteClientFn(req, res) && !hasViteClient ) {
             injection += `<script type="module" src="/@vite/client"></script>\n`
           }
 
